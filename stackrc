@@ -1,3 +1,28 @@
+# stackrc - Configuration for DevStack
+
+# Common configuration defaults
+
+# Destination path for installation ``DEST``
+DEST=/opt/stack
+
+# Normally ``TOP_DIR`` is set before calling stackrc; this is
+# a last-chance value, and is the only value in this file that
+# is set to be overridden
+TOP_DIR=${TOP_DIR:-$DEST/devstack}
+
+# ``FILES`` contains config templates and other useful files such as the
+# list of **apt** and **pip** dependencies
+FILES=$TOP_DIR/files
+
+# Timeouts
+# --------
+
+# Service startup timeout
+SERVICE_TIMEOUT=60
+
+# Specify which services to launch.  These generally correspond to screen tabs
+ENABLED_SERVICES=g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit
+
 # compute service
 NOVA_REPO=https://github.com/openstack/nova.git
 NOVA_BRANCH=master
@@ -10,13 +35,34 @@ SWIFT_BRANCH=master
 SWIFT_KEYSTONE_REPO=https://github.com/cloudbuilders/swift-keystone2.git
 SWIFT_KEYSTONE_BRANCH=master
 
-# image catalog service
+# glance: image catalog service
+# -----------------------------
+
 GLANCE_REPO=https://github.com/openstack/glance.git
 GLANCE_BRANCH=master
+GLANCE_DIR=$DEST/glance
 
-# unified auth system (manages accounts/tokens)
+# Where Glance stores its images
+GLANCE_IMAGE_DIR=$DEST/glance/images
+# Glance connection port
+GLANCE_PORT=9292
+
+
+# keystone: identity management
+# -----------------------------
+
 KEYSTONE_REPO=https://github.com/openstack/keystone.git
 KEYSTONE_BRANCH=master
+
+# Set default Keystone interface configuration
+# set hosts to "" to use ``SERVICE_HOST``
+KEYSTONE_AUTH_HOST=""
+KEYSTONE_AUTH_PORT=35357
+KEYSTONE_AUTH_PROTOCOL=http
+KEYSTONE_SERVICE_HOST=""
+KEYSTONE_SERVICE_PORT=5000
+KEYSTONE_SERVICE_PROTOCOL=http
+
 
 # a websockets/html5 or flash powered VNC console for vm instances
 NOVNC_REPO=https://github.com/cloudbuilders/noVNC.git
@@ -77,6 +123,6 @@ case "$LIBVIRT_TYPE" in
 esac
 
 # allow local overrides of env variables
-if [ -f ./localrc ]; then
-    source ./localrc
+if [ -f $TOP_DIR/localrc ]; then
+    source $TOP_DIR/localrc
 fi

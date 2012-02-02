@@ -85,7 +85,7 @@ fi
 RABBIT_HOST=${RABBIT_HOST:-localhost}
 
 # Glance connection info.  Note the port must be specified.
-GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$HOST_IP:9292}
+GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$HOST_IP:$GLANCE_PORT}
 set `echo $GLANCE_HOSTPORT | tr ':' ' '`
 GLANCE_HOST=$1
 GLANCE_PORT=$2

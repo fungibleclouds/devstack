@@ -38,11 +38,7 @@ TOP_DIR=$(cd $(dirname "$0") && pwd)
 # Import common functions
 . $TOP_DIR/functions
 
-# stack.sh keeps the list of **apt** and **pip** dependencies in external
-# files, along with config templates and other useful files.  You can find these
-# in the ``files`` directory (next to this script).  We will reference this
-# directory using the ``FILES`` variable in this script.
-FILES=$TOP_DIR/files
+# Make sure ``FILES`` directory is present
 if [ ! -d $FILES ]; then
     echo "ERROR: missing devstack/files - did you grab more than just stack.sh?"
     exit 1
@@ -84,10 +80,7 @@ fi
 # useful for changing a branch or repository to test other versions.  Also you
 # can store your other settings like **MYSQL_PASSWORD** or **ADMIN_PASSWORD** instead
 # of letting devstack generate random ones for you.
-source ./stackrc
-
-# Destination path for installation ``DEST``
-DEST=${DEST:-/opt/stack}
+source $TOP_DIR/stackrc
 
 # Check to see if we are already running a stack.sh
 if type -p screen >/dev/null && screen -ls | egrep -q "[0-9].stack"; then
@@ -156,7 +149,6 @@ OFFLINE=`trueorfalse False $OFFLINE`
 # Set the destination directories for openstack projects
 NOVA_DIR=$DEST/nova
 HORIZON_DIR=$DEST/horizon
-GLANCE_DIR=$DEST/glance
 KEYSTONE_DIR=$DEST/keystone
 NOVACLIENT_DIR=$DEST/python-novaclient
 KEYSTONECLIENT_DIR=$DEST/python-keystoneclient
@@ -183,7 +175,7 @@ M_HOST=${M_HOST:-localhost}
 M_MAC_RANGE=${M_MAC_RANGE:-404040/24}
 
 # Specify which services to launch.  These generally correspond to screen tabs
-ENABLED_SERVICES=${ENABLED_SERVICES:-g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit}
+export ENABLED_SERVICES=${ENABLED_SERVICES:-g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit}
 
 # Name of the lvm volume group to use/create for iscsi volumes
 VOLUME_GROUP=${VOLUME_GROUP:-nova-volumes}
@@ -216,12 +208,12 @@ fi
 SERVICE_HOST=${SERVICE_HOST:-$HOST_IP}
 
 # Configure services to syslog instead of writing to individual log files
-SYSLOG=`trueorfalse False $SYSLOG`
+export SYSLOG=`trueorfalse False $SYSLOG`
 SYSLOG_HOST=${SYSLOG_HOST:-$HOST_IP}
 SYSLOG_PORT=${SYSLOG_PORT:-516}
 
 # Service startup timeout
-SERVICE_TIMEOUT=${SERVICE_TIMEOUT:-60}
+export SERVICE_TIMEOUT
 
 # Generic helper to configure passwords
 function read_password {
@@ -340,18 +332,17 @@ FLAT_INTERFACE=${FLAT_INTERFACE:-eth0}
 # You will need to send the same ``MYSQL_PASSWORD`` to every host if you are doing
 # a multi-node devstack installation.
 MYSQL_HOST=${MYSQL_HOST:-localhost}
-MYSQL_USER=${MYSQL_USER:-root}
+export MYSQL_USER=${MYSQL_USER:-root}
 read_password MYSQL_PASSWORD "ENTER A PASSWORD TO USE FOR MYSQL."
+export MYSQL_PASSWORD
 
 # don't specify /db in this string, so we can use it for multiple services
-BASE_SQL_CONN=${BASE_SQL_CONN:-mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST}
+export BASE_SQL_CONN=${BASE_SQL_CONN:-mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST}
 
 # Rabbit connection info
 RABBIT_HOST=${RABBIT_HOST:-localhost}
 read_password RABBIT_PASSWORD "ENTER A PASSWORD TO USE FOR RABBIT."
 
-# Glance connection info.  Note the port must be specified.
-GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$SERVICE_HOST:9292}
 
 # SWIFT
 # -----
@@ -396,16 +387,15 @@ fi
 # Service Token - Openstack components need to have an admin token
 # to validate user tokens.
 read_password SERVICE_TOKEN "ENTER A SERVICE_TOKEN TO USE FOR THE SERVICE ADMIN TOKEN."
+export SERVICE_TOKEN
 # Horizon currently truncates usernames and passwords at 20 characters
 read_password ADMIN_PASSWORD "ENTER A PASSWORD TO USE FOR HORIZON AND KEYSTONE (20 CHARS OR LESS)."
 
 # Set Keystone interface configuration
-KEYSTONE_AUTH_HOST=${KEYSTONE_AUTH_HOST:-$SERVICE_HOST}
-KEYSTONE_AUTH_PORT=${KEYSTONE_AUTH_PORT:-35357}
-KEYSTONE_AUTH_PROTOCOL=${KEYSTONE_AUTH_PROTOCOL:-http}
-KEYSTONE_SERVICE_HOST=${KEYSTONE_SERVICE_HOST:-$SERVICE_HOST}
-KEYSTONE_SERVICE_PORT=${KEYSTONE_SERVICE_PORT:-5000}
-KEYSTONE_SERVICE_PROTOCOL=${KEYSTONE_SERVICE_PROTOCOL:-http}
+export KEYSTONE_AUTH_HOST=${KEYSTONE_AUTH_HOST:-$SERVICE_HOST}
+export KEYSTONE_AUTH_PORT KEYSTONE_AUTH_PROTOCOL
+export KEYSTONE_SERVICE_HOST=${KEYSTONE_SERVICE_HOST:-$SERVICE_HOST}
+export KEYSTONE_SERVICE_PORT KEYSTONE_SERVICE_PROTOCOL
 
 # Horizon
 # -------
@@ -549,11 +539,6 @@ if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
     # swift + keystone middleware
     git_clone $SWIFT_KEYSTONE_REPO $SWIFT_KEYSTONE_DIR $SWIFT_KEYSTONE_BRANCH
 fi
-if [[ "$ENABLED_SERVICES" =~ "g-api" ||
-      "$ENABLED_SERVICES" =~ "n-api" ]]; then
-    # image catalog service
-    git_clone $GLANCE_REPO $GLANCE_DIR $GLANCE_BRANCH
-fi
 if [[ "$ENABLED_SERVICES" =~ "n-novnc" ]]; then
     # a websockets/html5 or flash powered VNC console for vm instances
     git_clone $NOVNC_REPO $NOVNC_DIR $NOVNC_BRANCH
@@ -581,7 +566,6 @@ fi
 # Initialization
 # ==============
 
-
 # setup our checkouts so they are installed into python path
 # allowing ``import nova`` or ``import glance.client``
 if [[ "$ENABLED_SERVICES" =~ "key" ||
@@ -593,10 +577,6 @@ fi
 if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
     cd $SWIFT_DIR; sudo python setup.py develop
     cd $SWIFT_KEYSTONE_DIR; sudo python setup.py develop
-fi
-if [[ "$ENABLED_SERVICES" =~ "g-api" ||
-      "$ENABLED_SERVICES" =~ "n-api" ]]; then
-    cd $GLANCE_DIR; sudo python setup.py develop
 fi
 cd $NOVACLIENT_DIR; sudo python setup.py develop
 cd $NOVA_DIR; sudo python setup.py develop
@@ -736,60 +716,9 @@ fi
 # Glance
 # ------
 
-if [[ "$ENABLED_SERVICES" =~ "g-reg" ]]; then
-    GLANCE_IMAGE_DIR=$DEST/glance/images
-    # Delete existing images
-    rm -rf $GLANCE_IMAGE_DIR
-
-    # Use local glance directories
-    mkdir -p $GLANCE_IMAGE_DIR
-
-    # (re)create glance database
-    mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'DROP DATABASE IF EXISTS glance;'
-    mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'CREATE DATABASE glance;'
-
-    function glance_config {
-        sudo sed -e "
-            s,%KEYSTONE_AUTH_HOST%,$KEYSTONE_AUTH_HOST,g;
-            s,%KEYSTONE_AUTH_PORT%,$KEYSTONE_AUTH_PORT,g;
-            s,%KEYSTONE_AUTH_PROTOCOL%,$KEYSTONE_AUTH_PROTOCOL,g;
-            s,%KEYSTONE_SERVICE_HOST%,$KEYSTONE_SERVICE_HOST,g;
-            s,%KEYSTONE_SERVICE_PORT%,$KEYSTONE_SERVICE_PORT,g;
-            s,%KEYSTONE_SERVICE_PROTOCOL%,$KEYSTONE_SERVICE_PROTOCOL,g;
-            s,%SQL_CONN%,$BASE_SQL_CONN/glance,g;
-            s,%SERVICE_TOKEN%,$SERVICE_TOKEN,g;
-            s,%DEST%,$DEST,g;
-            s,%SYSLOG%,$SYSLOG,g;
-        " -i $1
-    }
-
-    # Copy over our glance configurations and update them
-    GLANCE_REGISTRY_CONF=$GLANCE_DIR/etc/glance-registry.conf
-    cp $FILES/glance-registry.conf $GLANCE_REGISTRY_CONF
-    glance_config $GLANCE_REGISTRY_CONF
-
-    if [[ -e $FILES/glance-registry-paste.ini ]]; then
-        GLANCE_REGISTRY_PASTE_INI=$GLANCE_DIR/etc/glance-registry-paste.ini
-        cp $FILES/glance-registry-paste.ini $GLANCE_REGISTRY_PASTE_INI
-        glance_config $GLANCE_REGISTRY_PASTE_INI
-        # During the transition for Glance to the split config files
-        # we cat them together to handle both pre- and post-merge
-        cat $GLANCE_REGISTRY_PASTE_INI >>$GLANCE_REGISTRY_CONF
-    fi
-
-    GLANCE_API_CONF=$GLANCE_DIR/etc/glance-api.conf
-    cp $FILES/glance-api.conf $GLANCE_API_CONF
-    glance_config $GLANCE_API_CONF
-
-    if [[ -e $FILES/glance-api-paste.ini ]]; then
-        GLANCE_API_PASTE_INI=$GLANCE_DIR/etc/glance-api-paste.ini
-        cp $FILES/glance-api-paste.ini $GLANCE_API_PASTE_INI
-        glance_config $GLANCE_API_PASTE_INI
-        # During the transition for Glance to the split config files
-        # we cat them together to handle both pre- and post-merge
-        cat $GLANCE_API_PASTE_INI >>$GLANCE_API_CONF
-    fi
-fi
+export GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$SERVICE_HOST:$GLANCE_PORT}
+$TOP_DIR/stack-glance.sh reset
+$TOP_DIR/stack-glance.sh install
 
 # Nova
 # ----
@@ -1279,14 +1208,8 @@ fi
 
 # our screen helper to launch a service in a hidden named screen
 function screen_it {
-    NL=`echo -ne '\015'`
     if [[ "$ENABLED_SERVICES" =~ "$1" ]]; then
-        screen -S stack -X screen -t $1
-        # sleep to allow bash to be ready to be send the command - we are
-        # creating a new window in screen and then sends characters, so if
-        # bash isn't running by the time we send the command, nothing happens
-        sleep 1.5
-        screen -S stack -p $1 -X stuff "$2$NL"
+        run_screen "$@"
     fi
 }
 
@@ -1296,20 +1219,7 @@ sleep 1
 # set a reasonable statusbar
 screen -r stack -X hardstatus alwayslastline "%-Lw%{= BW}%50>%n%f* %t%{-}%+Lw%< %= %H"
 
-# launch the glance registry service
-if [[ "$ENABLED_SERVICES" =~ "g-reg" ]]; then
-    screen_it g-reg "cd $GLANCE_DIR; bin/glance-registry --config-file=etc/glance-registry.conf"
-fi
-
-# launch the glance api and wait for it to answer before continuing
-if [[ "$ENABLED_SERVICES" =~ "g-api" ]]; then
-    screen_it g-api "cd $GLANCE_DIR; bin/glance-api --config-file=etc/glance-api.conf"
-    echo "Waiting for g-api ($GLANCE_HOSTPORT) to start..."
-    if ! timeout $SERVICE_TIMEOUT sh -c "while ! http_proxy= wget -q -O- http://$GLANCE_HOSTPORT; do sleep 1; done"; then
-      echo "g-api did not start"
-      exit 1
-    fi
-fi
+$TOP_DIR/stack-glance.sh run
 
 # launch the keystone and wait for it to answer before continuing
 if [[ "$ENABLED_SERVICES" =~ "key" ]]; then

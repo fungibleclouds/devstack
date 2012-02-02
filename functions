@@ -78,6 +78,20 @@ function pip_install {
 }
 
 
+# our screen helper to launch a service in a hidden named screen
+# Assumes session name is 'screen'
+# run_screen windows-name command
+function run_screen {
+    screen -S stack -X screen -t $1
+    # sleep to allow bash to be ready to be send the command - we are
+    # creating a new window in screen and then sends characters, so if
+    # bash isn't running by the time we send the command, nothing happens
+    sleep 1.5
+    NL=`echo -ne '\015'`
+    screen -S stack -p $1 -X stuff "$2$NL"
+}
+
+
 # Normalize config values to True or False
 # VAR=`trueorfalse default-value test-value`
 function trueorfalse() {
