@@ -154,8 +154,6 @@ KEYSTONE_DIR=$DEST/keystone
 NOVACLIENT_DIR=$DEST/python-novaclient
 KEYSTONECLIENT_DIR=$DEST/python-keystoneclient
 NOVNC_DIR=$DEST/noVNC
-SWIFT_DIR=$DEST/swift
-SWIFT_KEYSTONE_DIR=$DEST/swift-keystone2
 QUANTUM_DIR=$DEST/quantum
 QUANTUM_CLIENT_DIR=$DEST/python-quantumclient
 MELANGE_DIR=$DEST/melange
@@ -176,7 +174,7 @@ M_HOST=${M_HOST:-localhost}
 M_MAC_RANGE=${M_MAC_RANGE:-404040/24}
 
 # Specify which services to launch.  These generally correspond to screen tabs
-export ENABLED_SERVICES=${ENABLED_SERVICES:-g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit}
+ENABLED_SERVICES=${ENABLED_SERVICES:-g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit}
 
 # Name of the lvm volume group to use/create for iscsi volumes
 VOLUME_GROUP=${VOLUME_GROUP:-nova-volumes}
@@ -209,7 +207,7 @@ fi
 SERVICE_HOST=${SERVICE_HOST:-$HOST_IP}
 
 # Configure services to syslog instead of writing to individual log files
-export SYSLOG=`trueorfalse False $SYSLOG`
+SYSLOG=`trueorfalse False $SYSLOG`
 SYSLOG_HOST=${SYSLOG_HOST:-$HOST_IP}
 SYSLOG_PORT=${SYSLOG_PORT:-516}
 
@@ -333,12 +331,12 @@ FLAT_INTERFACE=${FLAT_INTERFACE:-eth0}
 # You will need to send the same ``MYSQL_PASSWORD`` to every host if you are doing
 # a multi-node devstack installation.
 MYSQL_HOST=${MYSQL_HOST:-localhost}
-export MYSQL_USER=${MYSQL_USER:-root}
+MYSQL_USER=${MYSQL_USER:-root}
 read_password MYSQL_PASSWORD "ENTER A PASSWORD TO USE FOR MYSQL."
-export MYSQL_PASSWORD
+MYSQL_PASSWORD
 
 # don't specify /db in this string, so we can use it for multiple services
-export BASE_SQL_CONN=${BASE_SQL_CONN:-mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST}
+BASE_SQL_CONN=${BASE_SQL_CONN:-mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST}
 
 # Rabbit connection info
 RABBIT_HOST=${RABBIT_HOST:-localhost}
@@ -349,31 +347,6 @@ read_password RABBIT_PASSWORD "ENTER A PASSWORD TO USE FOR RABBIT."
 # -----
 # TODO: implement glance support
 # TODO: add logging to different location.
-
-# By default the location of swift drives and objects is located inside
-# the swift source directory. SWIFT_DATA_LOCATION variable allow you to redefine
-# this.
-SWIFT_DATA_LOCATION=${SWIFT_DATA_LOCATION:-${SWIFT_DIR}/data}
-
-# We are going to have the configuration files inside the source
-# directory, change SWIFT_CONFIG_LOCATION if you want to adjust that.
-SWIFT_CONFIG_LOCATION=${SWIFT_CONFIG_LOCATION:-${SWIFT_DIR}/config}
-
-# devstack will create a loop-back disk formatted as XFS to store the
-# swift data. By default the disk size is 1 gigabyte. The variable
-# SWIFT_LOOPBACK_DISK_SIZE specified in bytes allow you to change
-# that.
-SWIFT_LOOPBACK_DISK_SIZE=${SWIFT_LOOPBACK_DISK_SIZE:-1000000}
-
-# The ring uses a configurable number of bits from a path’s MD5 hash as
-# a partition index that designates a device. The number of bits kept
-# from the hash is known as the partition power, and 2 to the partition
-# power indicates the partition count. Partitioning the full MD5 hash
-# ring allows other parts of the cluster to work in batches of items at
-# once which ends up either more efficient or at least less complex than
-# working with each item separately or the entire cluster all at once.
-# By default we define 9 for the partition count (which mean 512).
-SWIFT_PARTITION_POWER_SIZE=${SWIFT_PARTITION_POWER_SIZE:-9}
 
 # We only ask for Swift Hash if we have enabled swift service.
 if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
@@ -388,15 +361,15 @@ fi
 # Service Token - Openstack components need to have an admin token
 # to validate user tokens.
 read_password SERVICE_TOKEN "ENTER A SERVICE_TOKEN TO USE FOR THE SERVICE ADMIN TOKEN."
-export SERVICE_TOKEN
+SERVICE_TOKEN
 # Horizon currently truncates usernames and passwords at 20 characters
 read_password ADMIN_PASSWORD "ENTER A PASSWORD TO USE FOR HORIZON AND KEYSTONE (20 CHARS OR LESS)."
 
 # Set Keystone interface configuration
-export KEYSTONE_AUTH_HOST=${KEYSTONE_AUTH_HOST:-$SERVICE_HOST}
-export KEYSTONE_AUTH_PORT KEYSTONE_AUTH_PROTOCOL
-export KEYSTONE_SERVICE_HOST=${KEYSTONE_SERVICE_HOST:-$SERVICE_HOST}
-export KEYSTONE_SERVICE_PORT KEYSTONE_SERVICE_PROTOCOL
+KEYSTONE_AUTH_HOST=${KEYSTONE_AUTH_HOST:-$SERVICE_HOST}
+KEYSTONE_AUTH_PORT KEYSTONE_AUTH_PROTOCOL
+KEYSTONE_SERVICE_HOST=${KEYSTONE_SERVICE_HOST:-$SERVICE_HOST}
+KEYSTONE_SERVICE_PORT KEYSTONE_SERVICE_PROTOCOL
 
 # Horizon
 # -------
@@ -535,10 +508,7 @@ if [[ "$ENABLED_SERVICES" =~ "key" ||
     git_clone $KEYSTONE_REPO $KEYSTONE_DIR $KEYSTONE_BRANCH
 fi
 if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
-    # storage service
-    git_clone $SWIFT_REPO $SWIFT_DIR $SWIFT_BRANCH
-    # swift + keystone middleware
-    git_clone $SWIFT_KEYSTONE_REPO $SWIFT_KEYSTONE_DIR $SWIFT_KEYSTONE_BRANCH
+    install_swift
 fi
 if [[ "$ENABLED_SERVICES" =~ "n-novnc" ]]; then
     # a websockets/html5 or flash powered VNC console for vm instances
@@ -574,10 +544,6 @@ if [[ "$ENABLED_SERVICES" =~ "key" ||
       "$ENABLED_SERVICES" =~ "n-api" ||
       "$ENABLED_SERVICES" =~ "swift" ]]; then
     cd $KEYSTONE_DIR; sudo python setup.py develop
-fi
-if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
-    cd $SWIFT_DIR; sudo python setup.py develop
-    cd $SWIFT_KEYSTONE_DIR; sudo python setup.py develop
 fi
 cd $NOVACLIENT_DIR; sudo python setup.py develop
 cd $NOVA_DIR; sudo python setup.py develop
@@ -717,7 +683,7 @@ fi
 # Glance
 # ------
 
-export GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$SERVICE_HOST:$GLANCE_PORT}
+GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$SERVICE_HOST:$GLANCE_PORT}
 reset_glance
 install_glance
 
@@ -843,142 +809,9 @@ fi
 
 # Storage Service
 if [[ "$ENABLED_SERVICES" =~ "swift" ]]; then
-    # We first do a bit of setup by creating the directories and
-    # changing the permissions so we can run it as our user.
-
-    USER_GROUP=$(id -g)
-    sudo mkdir -p ${SWIFT_DATA_LOCATION}/drives
-    sudo chown -R $USER:${USER_GROUP} ${SWIFT_DATA_LOCATION}
-
-    # We then create a loopback disk and format it to XFS.
-    # TODO: Reset disks on new pass.
-    if [[ ! -e ${SWIFT_DATA_LOCATION}/drives/images/swift.img ]]; then
-        mkdir -p  ${SWIFT_DATA_LOCATION}/drives/images
-        sudo touch  ${SWIFT_DATA_LOCATION}/drives/images/swift.img
-        sudo chown $USER: ${SWIFT_DATA_LOCATION}/drives/images/swift.img
-
-        dd if=/dev/zero of=${SWIFT_DATA_LOCATION}/drives/images/swift.img \
-            bs=1024 count=0 seek=${SWIFT_LOOPBACK_DISK_SIZE}
-        mkfs.xfs -f -i size=1024  ${SWIFT_DATA_LOCATION}/drives/images/swift.img
-    fi
-
-    # After the drive being created we mount the disk with a few mount
-    # options to make it most efficient as possible for swift.
-    mkdir -p ${SWIFT_DATA_LOCATION}/drives/sdb1
-    if ! egrep -q ${SWIFT_DATA_LOCATION}/drives/sdb1 /proc/mounts; then
-        sudo mount -t xfs -o loop,noatime,nodiratime,nobarrier,logbufs=8  \
-            ${SWIFT_DATA_LOCATION}/drives/images/swift.img ${SWIFT_DATA_LOCATION}/drives/sdb1
-    fi
-
-    # We then create link to that mounted location so swift would know
-    # where to go.
-    for x in {1..4}; do sudo ln -sf ${SWIFT_DATA_LOCATION}/drives/sdb1/$x ${SWIFT_DATA_LOCATION}/$x; done
-
-    # We now have to emulate a few different servers into one we
-    # create all the directories needed for swift
-    tmpd=""
-    for d in ${SWIFT_DATA_LOCATION}/drives/sdb1/{1..4} \
-        ${SWIFT_CONFIG_LOCATION}/{object,container,account}-server \
-        ${SWIFT_DATA_LOCATION}/{1..4}/node/sdb1 /var/run/swift; do
-        [[ -d $d ]] && continue
-        sudo install -o ${USER} -g $USER_GROUP -d $d
-    done
-
-   # We do want to make sure this is all owned by our user.
-   sudo chown -R $USER: ${SWIFT_DATA_LOCATION}/{1..4}/node
-   sudo chown -R $USER: ${SWIFT_CONFIG_LOCATION}
-
-   # swift-init has a bug using /etc/swift until bug #885595 is fixed
-   # we have to create a link
-   sudo ln -sf ${SWIFT_CONFIG_LOCATION} /etc/swift
-
-   # Swift use rsync to syncronize between all the different
-   # partitions (which make more sense when you have a multi-node
-   # setup) we configure it with our version of rsync.
-   sed -e "s/%GROUP%/${USER_GROUP}/;s/%USER%/$USER/;s,%SWIFT_DATA_LOCATION%,$SWIFT_DATA_LOCATION," $FILES/swift/rsyncd.conf | sudo tee /etc/rsyncd.conf
-   sudo sed -i '/^RSYNC_ENABLE=false/ { s/false/true/ }' /etc/default/rsync
-
-   # By default Swift will be installed with the tempauth middleware
-   # which has some default username and password if you have
-   # configured keystone it will checkout the directory.
-   if [[ "$ENABLED_SERVICES" =~ "key" ]]; then
-       swift_auth_server=keystone
-
-       # We install the memcache server as this is will be used by the
-       # middleware to cache the tokens auths for a long this is needed.
-       apt_get install memcached
-
-       # We need a special version of bin/swift which understand the
-       # OpenStack api 2.0, we download it until this is getting
-       # integrated in swift.
-       sudo https_proxy=$https_proxy curl -s -o/usr/local/bin/swift \
-           'https://review.openstack.org/gitweb?p=openstack/swift.git;a=blob_plain;f=bin/swift;hb=48bfda6e2fdf3886c98bd15649887d54b9a2574e'
-   else
-       swift_auth_server=tempauth
-   fi
-
-   # We do the install of the proxy-server and swift configuration
-   # replacing a few directives to match our configuration.
-   sed "s,%SWIFT_CONFIG_LOCATION%,${SWIFT_CONFIG_LOCATION},;s/%USER%/$USER/;s/%SERVICE_TOKEN%/${SERVICE_TOKEN}/;s/%AUTH_SERVER%/${swift_auth_server}/" \
-       $FILES/swift/proxy-server.conf|sudo tee  ${SWIFT_CONFIG_LOCATION}/proxy-server.conf
-
-   sed -e "s/%SWIFT_HASH%/$SWIFT_HASH/" $FILES/swift/swift.conf > ${SWIFT_CONFIG_LOCATION}/swift.conf
-
-   # We need to generate a object/account/proxy configuration
-   # emulating 4 nodes on different ports we have a little function
-   # that help us doing that.
-   function generate_swift_configuration() {
-       local server_type=$1
-       local bind_port=$2
-       local log_facility=$3
-       local node_number
-
-       for node_number in {1..4}; do
-           node_path=${SWIFT_DATA_LOCATION}/${node_number}
-           sed -e "s,%SWIFT_CONFIG_LOCATION%,${SWIFT_CONFIG_LOCATION},;s,%USER%,$USER,;s,%NODE_PATH%,${node_path},;s,%BIND_PORT%,${bind_port},;s,%LOG_FACILITY%,${log_facility}," \
-               $FILES/swift/${server_type}-server.conf > ${SWIFT_CONFIG_LOCATION}/${server_type}-server/${node_number}.conf
-           bind_port=$(( ${bind_port} + 10 ))
-           log_facility=$(( ${log_facility} + 1 ))
-       done
-   }
-   generate_swift_configuration object 6010 2
-   generate_swift_configuration container 6011 2
-   generate_swift_configuration account 6012 2
-
-
-   # We have some specific configuration for swift for rsyslog. See
-   # the file /etc/rsyslog.d/10-swift.conf for more info.
-   swift_log_dir=${SWIFT_DATA_LOCATION}/logs
-   rm -rf ${swift_log_dir}
-   mkdir -p ${swift_log_dir}/hourly
-   sudo chown -R syslog:adm ${swift_log_dir}
-   sed "s,%SWIFT_LOGDIR%,${swift_log_dir}," $FILES/swift/rsyslog.conf | sudo \
-       tee /etc/rsyslog.d/10-swift.conf
-   sudo restart rsyslog
-
-   # We create two helper scripts :
-   #
-   # - swift-remakerings
-   #   Allow to recreate rings from scratch.
-   # - swift-startmain
-   #   Restart your full cluster.
-   #
-   sed -e "s,%SWIFT_CONFIG_LOCATION%,${SWIFT_CONFIG_LOCATION},;s/%SWIFT_PARTITION_POWER_SIZE%/$SWIFT_PARTITION_POWER_SIZE/" $FILES/swift/swift-remakerings | \
-       sudo tee /usr/local/bin/swift-remakerings
-   sudo install -m755 $FILES/swift/swift-startmain /usr/local/bin/
-   sudo chmod +x /usr/local/bin/swift-*
-
-   # We then can start rsync.
-   sudo /etc/init.d/rsync restart || :
-
-   # Create our ring for the object/container/account.
-   /usr/local/bin/swift-remakerings
-
-   # And now we launch swift-startmain to get our cluster running
-   # ready to be tested.
-   /usr/local/bin/swift-startmain || :
-
-   unset s swift_hash swift_auth_server tmpd
+    reset_swift
+    configure_swift
+    start_swift
 fi
 
 # Volume Service
