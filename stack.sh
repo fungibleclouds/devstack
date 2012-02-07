@@ -37,7 +37,9 @@ TOP_DIR=$(cd $(dirname "$0") && pwd)
 
 # Import common functions
 . $TOP_DIR/functions
+. $TOP_DIR/stack-volume.sh
 . $TOP_DIR/stack-glance.sh
+. $TOP_DIR/stack-swift.sh
 
 # Make sure ``FILES`` directory is present
 if [ ! -d $FILES ]; then
@@ -175,11 +177,6 @@ M_MAC_RANGE=${M_MAC_RANGE:-404040/24}
 
 # Specify which services to launch.  These generally correspond to screen tabs
 ENABLED_SERVICES=${ENABLED_SERVICES:-g-api,g-reg,key,n-api,n-crt,n-obj,n-cpu,n-net,n-sch,n-novnc,n-xvnc,n-cauth,horizon,mysql,rabbit}
-
-# Name of the lvm volume group to use/create for iscsi volumes
-VOLUME_GROUP=${VOLUME_GROUP:-nova-volumes}
-VOLUME_NAME_PREFIX=${VOLUME_NAME_PREFIX:-volume-}
-INSTANCE_NAME_PREFIX=${INSTANCE_NAME_PREFIX:-instance-}
 
 # Nova hypervisor configuration.  We default to libvirt whth  **kvm** but will
 # drop back to **qemu** if we are unable to load the kvm module.  Stack.sh can
@@ -333,7 +330,6 @@ FLAT_INTERFACE=${FLAT_INTERFACE:-eth0}
 MYSQL_HOST=${MYSQL_HOST:-localhost}
 MYSQL_USER=${MYSQL_USER:-root}
 read_password MYSQL_PASSWORD "ENTER A PASSWORD TO USE FOR MYSQL."
-MYSQL_PASSWORD
 
 # don't specify /db in this string, so we can use it for multiple services
 BASE_SQL_CONN=${BASE_SQL_CONN:-mysql://$MYSQL_USER:$MYSQL_PASSWORD@$MYSQL_HOST}
@@ -361,15 +357,12 @@ fi
 # Service Token - Openstack components need to have an admin token
 # to validate user tokens.
 read_password SERVICE_TOKEN "ENTER A SERVICE_TOKEN TO USE FOR THE SERVICE ADMIN TOKEN."
-SERVICE_TOKEN
 # Horizon currently truncates usernames and passwords at 20 characters
 read_password ADMIN_PASSWORD "ENTER A PASSWORD TO USE FOR HORIZON AND KEYSTONE (20 CHARS OR LESS)."
 
 # Set Keystone interface configuration
 KEYSTONE_AUTH_HOST=${KEYSTONE_AUTH_HOST:-$SERVICE_HOST}
-KEYSTONE_AUTH_PORT KEYSTONE_AUTH_PROTOCOL
 KEYSTONE_SERVICE_HOST=${KEYSTONE_SERVICE_HOST:-$SERVICE_HOST}
-KEYSTONE_SERVICE_PORT KEYSTONE_SERVICE_PROTOCOL
 
 # Horizon
 # -------
@@ -818,43 +811,7 @@ fi
 # --------------
 
 if [[ "$ENABLED_SERVICES" =~ "n-vol" ]]; then
-    #
-    # Configure a default volume group called 'nova-volumes' for the nova-volume
-    # service if it does not yet exist.  If you don't wish to use a file backed
-    # volume group, create your own volume group called 'nova-volumes' before
-    # invoking stack.sh.
-    #
-    # By default, the backing file is 2G in size, and is stored in /opt/stack.
-
-    # install the package
-    apt_get install tgt
-
-    if ! sudo vgs $VOLUME_GROUP; then
-        VOLUME_BACKING_FILE=${VOLUME_BACKING_FILE:-$DEST/nova-volumes-backing-file}
-        VOLUME_BACKING_FILE_SIZE=${VOLUME_BACKING_FILE_SIZE:-2052M}
-        # Only create if the file doesn't already exists
-        [[ -f $VOLUME_BACKING_FILE ]] || truncate -s $VOLUME_BACKING_FILE_SIZE $VOLUME_BACKING_FILE
-        DEV=`sudo losetup -f --show $VOLUME_BACKING_FILE`
-        # Only create if the loopback device doesn't contain $VOLUME_GROUP
-        if ! sudo vgs $VOLUME_GROUP; then sudo vgcreate $VOLUME_GROUP $DEV; fi
-    fi
-
-    if sudo vgs $VOLUME_GROUP; then
-        # Remove nova iscsi targets
-        sudo tgtadm --op show --mode target | grep $VOLUME_NAME_PREFIX | grep Target | cut -f3 -d ' ' | sudo xargs -n1 tgt-admin --delete || true
-        # Clean out existing volumes
-        for lv in `sudo lvs --noheadings -o lv_name $VOLUME_GROUP`; do
-            # VOLUME_NAME_PREFIX prefixes the LVs we want
-            if [[ "${lv#$VOLUME_NAME_PREFIX}" != "$lv" ]]; then
-                sudo lvremove -f $VOLUME_GROUP/$lv
-            fi
-        done
-    fi
-
-    # tgt in oneiric doesn't restart properly if tgtd isn't running
-    # do it in two steps
-    sudo stop tgt || true
-    sudo start tgt
+    reset_volume
 fi
 
 function add_nova_flag {
@@ -1161,7 +1118,9 @@ fi
 screen_it n-cpu "cd $NOVA_DIR && sg libvirtd $NOVA_DIR/bin/nova-compute"
 screen_it n-crt "cd $NOVA_DIR && $NOVA_DIR/bin/nova-cert"
 screen_it n-obj "cd $NOVA_DIR && $NOVA_DIR/bin/nova-objectstore"
-screen_it n-vol "cd $NOVA_DIR && $NOVA_DIR/bin/nova-volume"
+if [[ "$ENABLED_SERVICES" =~ "n-vol" ]]; then
+    start_volume
+fi
 screen_it n-net "cd $NOVA_DIR && $NOVA_DIR/bin/nova-network"
 screen_it n-sch "cd $NOVA_DIR && $NOVA_DIR/bin/nova-scheduler"
 if [[ "$ENABLED_SERVICES" =~ "n-novnc" ]]; then

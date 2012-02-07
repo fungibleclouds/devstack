@@ -1,6 +1,14 @@
 # stack-swift.sh - Configure and install Swift for DevStack
 # Installs Swift API
 
+# This script exits on an error so that errors don't compound and you see
+# only the first error that occured.
+set -o errexit
+
+# Print the commands being run so that we can see the command that triggers
+# an error.  It is also useful for following along as the install occurs.
+set -o xtrace
+
 # Remove and recreate swift database and local storage
 function reset_swift() {
     # We first do a bit of setup by creating the directories and
