@@ -1,34 +1,15 @@
-# #!/usr/bin/env bash
 # stack-glance.sh - Configure and install Glance for DevStack
-#
 # Installs Glance API and Registry services
 
-PHASE=${1:-"all"}
-
-# Keep track of the current devstack directory.
-TOP_DIR=$(cd $(dirname "$0") && pwd)
-
-# Import common functions and configuration
-source $TOP_DIR/functions
-source $TOP_DIR/stackrc
-
-# This script exits on an error so that errors don't compound and you see
-# only the first error that occured.
-set -o errexit
-
-# Print the commands being run so that we can see the command that triggers
-# an error.  It is also useful for following allowing as the install occurs.
-set -o xtrace
-
-if [[ "all,reset" =~ "$PHASE" ]]; then
+# Remove and recreate glance database and local storage
+function reset_glance() {
     # Delete existing images
     rm -rf $GLANCE_IMAGE_DIR
 
     # Use local glance directories
     mkdir -p $GLANCE_IMAGE_DIR
 
-    # FIXME(dtroyer): test for mysql
-    if [[ "1" == "1" ]]; then
+    if [[ "$ENABLED_SERVICES" =~ "mysql" ]]; then
         # Make sure vars are set
         if [[ -z $MYSQL_USER || -z $MYSQL_PASSWORD ]]; then
             echo "MySQL not configured?"
@@ -38,10 +19,10 @@ if [[ "all,reset" =~ "$PHASE" ]]; then
         mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'DROP DATABASE IF EXISTS glance;'
         mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'CREATE DATABASE glance;'
     fi
-fi
+}
 
-if [[ "all,install" =~ "$PHASE" ]]; then
-
+# Check out glance, configure for development, process config files
+function install_glance() {
     if [[ "$ENABLED_SERVICES" =~ "g-api" ||
           "$ENABLED_SERVICES" =~ "n-api" ]]; then
         # image catalog service
@@ -90,10 +71,10 @@ if [[ "all,install" =~ "$PHASE" ]]; then
         # we cat them together to handle both pre- and post-merge
         cat $GLANCE_API_PASTE_INI >>$GLANCE_API_CONF
     fi
+}
 
-fi
-
-if [[ "all,run" =~ "$PHASE" ]]; then
+# Start glance services
+function start_glance() {
     # launch the glance registry service
     if [[ "$ENABLED_SERVICES" =~ "g-reg" ]]; then
         run_screen g-reg "cd $GLANCE_DIR; bin/glance-registry --config-file=etc/glance-registry.conf"
@@ -108,4 +89,4 @@ if [[ "all,run" =~ "$PHASE" ]]; then
           exit 1
         fi
     fi
-fi
+}

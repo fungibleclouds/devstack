@@ -43,9 +43,9 @@ GLANCE_BRANCH=master
 GLANCE_DIR=$DEST/glance
 
 # Where Glance stores its images
-GLANCE_IMAGE_DIR=$DEST/glance/images
+export GLANCE_IMAGE_DIR=$DEST/glance/images
 # Glance connection port
-GLANCE_PORT=9292
+export GLANCE_PORT=9292
 
 
 # keystone: identity management

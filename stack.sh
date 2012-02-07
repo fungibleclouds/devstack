@@ -37,6 +37,7 @@ TOP_DIR=$(cd $(dirname "$0") && pwd)
 
 # Import common functions
 . $TOP_DIR/functions
+. $TOP_DIR/stack-glance.sh
 
 # Make sure ``FILES`` directory is present
 if [ ! -d $FILES ]; then
@@ -717,8 +718,8 @@ fi
 # ------
 
 export GLANCE_HOSTPORT=${GLANCE_HOSTPORT:-$SERVICE_HOST:$GLANCE_PORT}
-$TOP_DIR/stack-glance.sh reset
-$TOP_DIR/stack-glance.sh install
+reset_glance
+install_glance
 
 # Nova
 # ----
@@ -1219,7 +1220,7 @@ sleep 1
 # set a reasonable statusbar
 screen -r stack -X hardstatus alwayslastline "%-Lw%{= BW}%50>%n%f* %t%{-}%+Lw%< %= %H"
 
-$TOP_DIR/stack-glance.sh run
+start_glance
 
 # launch the keystone and wait for it to answer before continuing
 if [[ "$ENABLED_SERVICES" =~ "key" ]]; then
