@@ -71,11 +71,6 @@ GLANCE_REPO=https://github.com/openstack/glance.git
 GLANCE_BRANCH=master
 GLANCE_DIR=$DEST/glance
 
-# Where Glance stores its images
-export GLANCE_IMAGE_DIR=$DEST/glance/images
-# Glance connection port
-export GLANCE_PORT=9292
-
 
 # keystone: identity management
 # -----------------------------

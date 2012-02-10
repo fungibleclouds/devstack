@@ -1,0 +1,34 @@
+# stack-keystone - Configure and install Keystone for DevStack
+# Installs Keystone's Identity service
+
+# This script exits on an error so that errors don't compound and you see
+# only the first error that occured.
+set -o errexit
+
+# Print the commands being run so that we can see the command that triggers
+# an error.  It is also useful for following along as the install occurs.
+set -o xtrace
+
+
+# Defaults
+# --------
+
+
+function reset_keystone() {
+    # (re)create keystone database
+    mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'DROP DATABASE IF EXISTS keystone;'
+    mysql -u$MYSQL_USER -p$MYSQL_PASSWORD -e 'CREATE DATABASE keystone;'
+}
+
+function install_keystone() {
+    echo "Not implemented"
+}
+
+function configure_keystone() {
+    echo "Not implemented"
+}
+
+function start_keystone() {
+    echo "Not implemented"
+}
+

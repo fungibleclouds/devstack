@@ -17,36 +17,20 @@
 
 # Learn more and get the most recent version at http://devstack.org
 
-# Sanity Check
-# ============
-
-# Warn users who aren't on oneiric, but allow them to override check and attempt
-# installation with ``FORCE=yes ./stack``
-DISTRO=$(lsb_release -c -s)
-
-if [[ ! ${DISTRO} =~ (oneiric) ]]; then
-    echo "WARNING: this script has only been tested on oneiric"
-    if [[ "$FORCE" != "yes" ]]; then
-        echo "If you wish to run this script anyway run with FORCE=yes"
-        exit 1
-    fi
-fi
-
 # Keep track of the current devstack directory.
 TOP_DIR=$(cd $(dirname "$0") && pwd)
 
-# Import common functions
-. $TOP_DIR/functions
-. $TOP_DIR/stack-volume.sh
-. $TOP_DIR/stack-glance.sh
-. $TOP_DIR/stack-swift.sh
-
-# Make sure ``FILES`` directory is present
-if [ ! -d $FILES ]; then
-    echo "ERROR: missing devstack/files - did you grab more than just stack.sh?"
+# Make sure ``$TOP_DIR/lib`` directory is present
+if [ ! -d $TOP_DIR/lib ]; then
+    echo "ERROR: missing devstack/lib - did you grab more than just stack.sh?"
     exit 1
 fi
 
+# Import common functions
+source $TOP_DIR/lib/functions
+
+# Set ``DISTRO`` early so it is available in stackrc and the lib includes
+DISTRO=$(lsb_release -c -s)
 
 
 # Settings
@@ -83,7 +67,37 @@ fi
 # useful for changing a branch or repository to test other versions.  Also you
 # can store your other settings like **MYSQL_PASSWORD** or **ADMIN_PASSWORD** instead
 # of letting devstack generate random ones for you.
+if [ ! -r stackrc ]; then
+    echo "ERROR: missing stackrc - did you grab more than just stack.sh?"
+    exit 1
+fi
 source $TOP_DIR/stackrc
+
+# Import function libraries
+source $TOP_DIR/lib/stack-nova
+source $TOP_DIR/lib/stack-volume
+source $TOP_DIR/lib/stack-glance
+source $TOP_DIR/lib/stack-swift
+
+
+# Sanity Checks
+# =============
+
+# Warn users who aren't on oneiric, but allow them to override check and attempt
+# installation with ``FORCE=yes ./stack``
+if [[ ! ${DISTRO} =~ (oneiric) ]]; then
+    echo "WARNING: this script has only been tested on oneiric"
+    if [[ "$FORCE" != "yes" ]]; then
+        echo "If you wish to run this script anyway run with FORCE=yes"
+        exit 1
+    fi
+fi
+
+# Make sure ``FILES`` directory is present
+if [ ! -d $FILES ]; then
+    echo "ERROR: missing devstack/files - did you grab more than just stack.sh?"
+    exit 1
+fi
 
 # Check to see if we are already running a stack.sh
 if type -p screen >/dev/null && screen -ls | egrep -q "[0-9].stack"; then

@@ -1,5 +1,5 @@
-# stack-volume.sh - Configure and install Nova's volume service
-#
+# stack-volume - Configure and install Nova's volume service
+# Installs and starts Nova volume service
 
 # This script exits on an error so that errors don't compound and you see
 # only the first error that occured.
@@ -9,10 +9,14 @@ set -o errexit
 # an error.  It is also useful for following along as the install occurs.
 set -o xtrace
 
+
+# Defaults
+# --------
+
 # Name of the lvm volume group to use/create for iscsi volumes
 VOLUME_GROUP=${VOLUME_GROUP:-nova-volumes}
 VOLUME_NAME_PREFIX=${VOLUME_NAME_PREFIX:-volume-}
-INSTANCE_NAME_PREFIX=${INSTANCE_NAME_PREFIX:-instance-}
+
 
 # Configure a default volume group called 'nova-volumes' for the nova-volume
 # service if it does not yet exist.  If you don't wish to use a file backed
