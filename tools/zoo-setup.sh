@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # set up zookeeper for devstack
 
+STABLE_SOURCE=http://ftp.wayne.edu/apache//zookeeper/stable/zookeeper-3.3.4.tar.gz
 
 # Keep track of the current devstack directory.
 TOP_DIR=$(cd $(dirname "$0")/.. && pwd)
+
+# Print the commands being run so that we can see the command that triggers
+# an error.  It is also useful for following allowing as the install occurs.
+set -o xtrace
 
 # Import common functions
 source $TOP_DIR/functions
@@ -23,6 +28,20 @@ fi
 
 source $TOP_DIR/stackrc
 
+ZOO_DIR=$DEST/zookeeper
+
+# gogetit <url> <destdir> [<filename>]
+function gogetit() {
+    local URL=$1
+    local DESTDIR=$2
+    local FILENAME=${URL##*/}
+    local FILENAME=${3:-FILENAME}
+    if [[ ! -d $DESTDIR ]]; then
+        mkdir -p $DESTDIR
+    fi
+    curl -o $DESTDIR/$FILENAME $URL
+}
+
 if [[ "oneiric" =~ ${DISTRO} ]]; then
     # oneiric has packages for 3.3.3
     OS_PKGS="zookeeper zookeeper-bin zookeeperd python-zookeeper"
@@ -30,6 +49,8 @@ if [[ "oneiric" =~ ${DISTRO} ]]; then
 elif [[  "f16" =~ ${DISTRO} ]]; then
     # no packages here, build from source
     PIPS=pykeeper
+
+    gogetit $STABLE_SOURCE $ZOO_DIR/files
 fi
 
 if [[ -n "$OS_PKGS" ]]; then
