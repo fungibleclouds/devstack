@@ -140,6 +140,9 @@ fi
 
 source $TOP_DIR/stackrc
 
+# Destination path for installation ``DEST``
+DEST=${DEST:-/opt/stack}
+
 ZOO_DIR=$DEST/zookeeper
 
 # gogetit <url> <destdir> [<filename>]
@@ -151,7 +154,9 @@ function gogetit() {
     if [[ ! -d $DESTDIR ]]; then
         mkdir -p $DESTDIR
     fi
-    curl -o $DESTDIR/$FILENAME $URL
+    if [[ ! -r $DESTDIR/$FILENAME ]]; then
+        curl -C - -o $DESTDIR/$FILENAME $URL
+    fi
 }
 
 if [[ "oneiric" =~ ${DISTRO} ]]; then
@@ -162,7 +167,26 @@ elif [[  "f16" =~ ${DISTRO} ]]; then
     # no packages here, build from source
     PIPS=pykeeper
 
-    gogetit $STABLE_SOURCE $ZOO_DIR/files
+    ZOO_SRC_FILE=${STABLE_SOURCE##*/}
+    ZOO_RELEASE=${ZOO_SRC_FILE%.tar.gz}
+    gogetit $STABLE_SOURCE $ZOO_DIR/files ${ZOO_SRC_FILE}
+
+    mkdir -p $ZOO_DIR/src
+    cd $ZOO_DIR/src
+    tar xzvf $ZOO_DIR/files/${ZOO_SRC_FILE}
+    cd $ZOO_RELEASE
+
+    # Build C bindings
+    pushd src/c
+    ./configure --prefix=/usr/local
+    make
+    sudo make install
+    sudo ldconfig
+    popd
+
+    # Build Python bindings
+    pushd contrib/zkpython
+    ant install
 fi
 
 if [[ -n "$OS_PKGS" ]]; then
